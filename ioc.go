@@ -67,19 +67,21 @@ func MustGet[T any](ctx context.Context) *T {
 
 // NamedGet 通过注入的名称获取指定类型的值
 func NamedGet[T any](ctx context.Context, name string) (*T, error) {
-	var abs T
-	t := reflect.TypeOf(&abs)
-	if ci, ok := ctx.Value(contextKey).(*Container); ok {
-		val, err := ci.NamedGet(name, t)
-		if err != nil {
-			if !errors.Is(err, ErrValueNotFound) {
-				return nil, err
+	var abstract T
+	t := reflect.TypeOf(&abstract)
+	if ctx != nil {
+		if ci, ok := ctx.Value(contextKey).(*Container); ok {
+			val, err := ci.NamedGet(name, t)
+			if err != nil {
+				if !errors.Is(err, ErrValueNotFound) {
+					return nil, err
+				}
+			} else if val.IsValid() {
+				//if x, ok := val.Interface().(*T); ok {
+				//	return x, nil
+				//}
+				return val.Interface().(*T), nil
 			}
-		} else if val.IsValid() {
-			//if x, ok := val.Interface().(*T); ok {
-			//	return x, nil
-			//}
-			return val.Interface().(*T), nil
 		}
 	}
 	val, err := global.NamedGet(name, t)
