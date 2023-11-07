@@ -57,7 +57,7 @@ func (b *binding) make(c *Container) (reflect.Value, error) {
 	if v, exists := c.instances[b.typ]; exists {
 		return v, nil
 	}
-	val, err := c.invoke(b.typ, b.factory)
+	val, err := c.invoke(b.factory.Type(), b.factory)
 	if err != nil {
 		return reflect.Value{}, err
 	}
