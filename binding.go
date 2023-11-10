@@ -14,38 +14,40 @@ var (
 )
 
 type binding struct {
+	name    string
 	typ     reflect.Type
 	factory reflect.Value
 	shared  bool
 }
 
-func newBinding(factory any, shared ...bool) (*binding, error) {
-	factoryReflector := reflect.ValueOf(factory)
-	factoryType := factoryReflector.Type()
-	if factoryType.Kind() != reflect.Func {
+func newBinding(name string, factory any, shared ...bool) (*binding, error) {
+	rv := reflect.ValueOf(factory)
+	rt := rv.Type()
+	if rt.Kind() != reflect.Func {
 		return nil, errNotFactory
 	}
-	switch returnCount := factoryType.NumOut(); returnCount {
+	switch returnCount := rt.NumOut(); returnCount {
 	case 1:
 		// 只有一个返回值
 	case 2:
 		// 第二个返回值必须实现 error 接口
-		if !factoryType.Out(1).Implements(errorType) {
+		if !rt.Out(1).Implements(errorType) {
 			return nil, errInvalidFactory
 		}
 	default:
 		return nil, errInvalidFactory
 	}
-	concreteType := factoryType.Out(0)
+	concreteType := rt.Out(0)
 	// 检查是否循环引用
-	for i := 0; i < factoryType.NumIn(); i++ {
-		if factoryType.In(i) == concreteType { // 循环依赖
+	for i := 0; i < rt.NumIn(); i++ {
+		if rt.In(i) == concreteType { // 循环依赖
 			return nil, errCircularReference
 		}
 	}
 	b := &binding{
+		name:    name,
 		typ:     concreteType,
-		factory: factoryReflector,
+		factory: rv,
 	}
 	if len(shared) > 0 {
 		b.shared = shared[0]
@@ -54,8 +56,11 @@ func newBinding(factory any, shared ...bool) (*binding, error) {
 }
 
 func (b *binding) make(c *Container) (reflect.Value, error) {
-	if v, exists := c.instances[b.typ]; exists {
-		return v, nil
+	if values, exists := c.instances[b.typ]; exists {
+		v, ok := values[b.name]
+		if ok {
+			return v, nil
+		}
 	}
 	val, err := c.invoke(b.factory.Type(), b.factory)
 	if err != nil {
@@ -69,7 +74,7 @@ func (b *binding) make(c *Container) (reflect.Value, error) {
 		}
 	}
 	if b.shared && rv.IsValid() {
-		c.setInstance(b.typ, rv)
+		c.setInstance(b.name, b.typ, rv)
 	}
 	return rv, nil
 }

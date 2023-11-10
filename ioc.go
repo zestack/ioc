@@ -56,11 +56,18 @@ func Resolve(i any) error {
 	return global.Resolve(i)
 }
 
-// Get 获取指定类型的值
+// Get 获取指定类型的值，泛型 T 只能是结构体
+//
+// 如果需要获取一个接口的实例，我们可以使用 Instance 函数
+// 返回一个 Container 实例，然后通过改容器来获取接口的具体实现。
 func Get[T any](ctx context.Context) (*T, error) {
 	return NamedGet[T](ctx, "")
 }
 
+// MustGet 获取指定类型的值，泛型 T 只能是结构体。
+//
+// 如果需要获取一个接口的实例，我们可以使用 Instance 函数
+// 返回一个 Container 实例，然后通过改容器来获取接口的具体实现。
 func MustGet[T any](ctx context.Context) *T {
 	return MustNamedGet[T](ctx, "")
 }
@@ -77,9 +84,6 @@ func NamedGet[T any](ctx context.Context, name string) (*T, error) {
 					return nil, err
 				}
 			} else if val.IsValid() {
-				//if x, ok := val.Interface().(*T); ok {
-				//	return x, nil
-				//}
 				return val.Interface().(*T), nil
 			}
 		}
@@ -91,10 +95,6 @@ func NamedGet[T any](ctx context.Context, name string) (*T, error) {
 	if !val.IsValid() {
 		return nil, ErrValueNotFound
 	}
-	//if x, ok := val.Interface().(*T); ok {
-	//	return x, nil
-	//}
-	//return nil, ErrValueNotFound
 	return val.Interface().(*T), nil
 }
 
@@ -113,4 +113,14 @@ func Invoke(f any) ([]reflect.Value, error) {
 
 func NewContext(parentCtx ...context.Context) context.Context {
 	return global.NewContext(parentCtx...)
+}
+
+func Instance(ctx context.Context) *Container {
+	if ctx == nil {
+		return global
+	}
+	if ci, ok := ctx.Value(contextKey).(*Container); ok {
+		return ci
+	}
+	return global
 }
